@@ -356,7 +356,7 @@ class PVScenarioGeneratorBase(abc.ABC):
             raise
         return pvdss_instance
 
-    def deploy_all_pv_scenarios(self) -> dict:
+    def deploy_all_pv_scenarios(self, hv_min) -> dict:
         """Given a feeder path, generate all PV scenarios for the feeder"""
         feeder_name = self.get_feeder_name()
         pvdss_instance = self.load_pvdss_instance()
@@ -372,7 +372,7 @@ class PVScenarioGeneratorBase(abc.ABC):
 
         # combined bus distance
         customer_distance = pvdss_instance.get_customer_distance()
-        highv_buses = pvdss_instance.get_highv_buses()
+        highv_buses = pvdss_instance.get_highv_buses(kv_min=hv_min)
         combined_bus_distance = pvdss_instance.combine_bus_distances(customer_distance, highv_buses)
         if max(combined_bus_distance.values()) == 0:
             logger.warning(
@@ -420,7 +420,7 @@ class PVScenarioGeneratorBase(abc.ABC):
                     bus_kv=highv_buses.bus_kv,
                     pv_records=pv_records,
                     penetration=penetration,
-                    sample=sample
+                    sample=sample,
                 )
                 existing_pv, pv_records = self.deploy_pv_scenario(data)
 
@@ -696,6 +696,10 @@ class PVScenarioGeneratorBase(abc.ABC):
 
     def get_pv_bus_subset(self, bus_distance: dict, subset_idx: int, priority_buses: list) -> list:
         """Return candidate buses"""
+        if not bus_distance:
+            logger.warning("bus_distance is empty. Returning an empty candidate_bus_array.")
+            return []
+    
         max_dist = max(bus_distance.values())
         min_dist = min(bus_distance.values())
         if self.config.placement == Placement.CLOSE.value:
@@ -1584,7 +1588,7 @@ class PVDeploymentManager(PVDataStorage):
         """
         super().__init__(input_path, hierarchy, config)
 
-    def generate_pv_deployments(self) -> dict:
+    def generate_pv_deployments(self, hv_min: float = 1) -> dict:
         """Given input path, generate pv deployments"""
         summary = {}
         feeder_paths = self.get_feeder_paths()
@@ -1594,7 +1598,7 @@ class PVDeploymentManager(PVDataStorage):
                 "Set initial integer seed %s for PV deployments on feeder - %s",
                 self.config.random_seed, feeder_path
             )
-            feeder_stats = generator.deploy_all_pv_scenarios()
+            feeder_stats = generator.deploy_all_pv_scenarios(hv_min)
             summary[feeder_path] = feeder_stats
         return summary
 
