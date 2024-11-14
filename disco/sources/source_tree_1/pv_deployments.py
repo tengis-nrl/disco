@@ -1014,16 +1014,17 @@ class SmallPVScenarioGenerator(PVScenarioGeneratorBase):
         customer_annual_kwh = kwargs.get("customer_annual_kwh", {})
         annual_sun_hours = kwargs.get("annual_sun_hours", None)
 
-        pv_size_array = [max_load_factor * data.bus_totalload[bus]]
         if 'small_pv_upper_bound' in kwargs:
-            pv_size_array.append(kwargs['small_pv_upper_bound'])
-        if roof_area and pv_efficiency:
-            value = roof_area[bus] * pv_efficiency
-            pv_size_array.append(value)
-        if customer_annual_kwh and annual_sun_hours:
-            value = customer_annual_kwh[bus] / annual_sun_hours
-            pv_size_array.append(value)
-        max_bus_pv_size = min(pv_size_array)
+            max_bus_pv_size = [kwargs['small_pv_upper_bound']]
+        else:
+            pv_size_array = [max_load_factor * data.bus_totalload[bus]]
+            if roof_area and pv_efficiency:
+                value = roof_area[bus] * pv_efficiency
+                pv_size_array.append(value)
+            if customer_annual_kwh and annual_sun_hours:
+                value = customer_annual_kwh[bus] / annual_sun_hours
+                pv_size_array.append(value)
+            max_bus_pv_size = min(pv_size_array)
         return max_bus_pv_size
 
 
