@@ -25,7 +25,7 @@ PLACEMENT_CHOICE = [item.value for item in Placement]
 logger = logging.getLogger(__name__)
 
 
-def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min: float):
+def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min: float, hv_max: float):
     """A method for generating pv deployments"""
     hierarchy = DeploymentHierarchy(hierarchy)
     config = SimpleNamespace(**config)
@@ -33,7 +33,7 @@ def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min:
         print(f"'-p' or '--placement' should not be None for this action, choose from {PLACEMENT_CHOICE}")
         sys.exit()
     manager = PVDeploymentManager(input_path, hierarchy, config)
-    summary = manager.generate_pv_deployments(hv_min=hv_min)
+    summary = manager.generate_pv_deployments(hv_min=hv_min, hv_max=hv_max)
     print(json.dumps(summary, indent=2))
 
 
@@ -290,11 +290,17 @@ def pv_deployments():
     help="Set an initial integer seed for making PV deployments reproducible"
 )
 @click.option(
-    "-mhv", "--minimum-high-voltage",
+    "-min-hv", "--minimum-high-voltage",
     type=click.FLOAT,
     default=1,
     show_default=True,
     help="Minimum voltage level for high voltage buses.",
+)
+@click.option(
+    "-max-hv", "--maximum-high-voltage",
+    type=click.FLOAT,
+    default=None,
+    help="Maximum voltage level for high voltage buses.",
 )
 @click.option(
     "--verbose",
@@ -324,6 +330,7 @@ def source_tree_1(
     pv_deployments_dirname,
     random_seed,
     hv_min,
+    hv_max,
     verbose
 ):
     """Generate PV deployments for source tree 1."""
@@ -358,6 +365,8 @@ def source_tree_1(
         args.append(kw_limit)
     if action == "create-pv":
         args.append(hv_min)
+        args.append(hv_max)
+        
     action_function(*args)
 
 

@@ -356,7 +356,7 @@ class PVScenarioGeneratorBase(abc.ABC):
             raise
         return pvdss_instance
 
-    def deploy_all_pv_scenarios(self, hv_min) -> dict:
+    def deploy_all_pv_scenarios(self, hv_min, hv_max) -> dict:
         """Given a feeder path, generate all PV scenarios for the feeder"""
         feeder_name = self.get_feeder_name()
         pvdss_instance = self.load_pvdss_instance()
@@ -372,7 +372,7 @@ class PVScenarioGeneratorBase(abc.ABC):
 
         # combined bus distance
         customer_distance = pvdss_instance.get_customer_distance()
-        highv_buses = pvdss_instance.get_highv_buses(kv_min=hv_min)
+        highv_buses = pvdss_instance.get_highv_buses(kv_min=hv_min, kv_max=hv_max)
 
         # Filter out overlapping buses from customer_distance
         customer_distance.bus_distance = {
@@ -1595,7 +1595,7 @@ class PVDeploymentManager(PVDataStorage):
         """
         super().__init__(input_path, hierarchy, config)
 
-    def generate_pv_deployments(self, hv_min: float = 1) -> dict:
+    def generate_pv_deployments(self, hv_min: float = 1, hv_max: float = None) -> dict:
         """Given input path, generate pv deployments"""
         summary = {}
         feeder_paths = self.get_feeder_paths()
@@ -1605,7 +1605,7 @@ class PVDeploymentManager(PVDataStorage):
                 "Set initial integer seed %s for PV deployments on feeder - %s",
                 self.config.random_seed, feeder_path
             )
-            feeder_stats = generator.deploy_all_pv_scenarios(hv_min)
+            feeder_stats = generator.deploy_all_pv_scenarios(hv_min, hv_max)
             summary[feeder_path] = feeder_stats
         return summary
 
