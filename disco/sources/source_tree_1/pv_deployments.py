@@ -373,6 +373,13 @@ class PVScenarioGeneratorBase(abc.ABC):
         # combined bus distance
         customer_distance = pvdss_instance.get_customer_distance()
         highv_buses = pvdss_instance.get_highv_buses(kv_min=hv_min)
+
+        # Filter out overlapping buses from customer_distance
+        customer_distance.bus_distance = {
+            bus: dist for bus, dist in customer_distance.bus_distance.items()
+            if bus not in highv_buses.hv_bus_distance
+        }
+
         combined_bus_distance = pvdss_instance.combine_bus_distances(customer_distance, highv_buses)
         if max(combined_bus_distance.values()) == 0:
             logger.warning(
