@@ -25,7 +25,7 @@ PLACEMENT_CHOICE = [item.value for item in Placement]
 logger = logging.getLogger(__name__)
 
 
-def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min: float, hv_max: float):
+def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min: float, hv_max: float, **kwargs):
     """A method for generating pv deployments"""
     hierarchy = DeploymentHierarchy(hierarchy)
     config = SimpleNamespace(**config)
@@ -33,7 +33,7 @@ def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min:
         print(f"'-p' or '--placement' should not be None for this action, choose from {PLACEMENT_CHOICE}")
         sys.exit()
     manager = PVDeploymentManager(input_path, hierarchy, config)
-    summary = manager.generate_pv_deployments(hv_min=hv_min, hv_max=hv_max)
+    summary = manager.generate_pv_deployments(hv_min=hv_min, hv_max=hv_max, **kwargs)
     print(json.dumps(summary, indent=2))
 
 
@@ -303,6 +303,18 @@ def pv_deployments():
     help="Maximum voltage level for high voltage buses.",
 )
 @click.option(
+    "-large-pv-max", "--large-pv-upper-bound",
+    type=click.FLOAT,
+    default=None,
+    help="Upper bound for large PV power.",
+)
+@click.option(
+    "-small-pv-max", "--small-pv-upper-bound",
+    type=click.FLOAT,
+    default=None,
+    help="Upper bound for small PV power.",
+)
+@click.option(
     "--verbose",
     type=click.BOOL,
     is_flag=True,
@@ -331,6 +343,8 @@ def source_tree_1(
     random_seed,
     hv_min,
     hv_max,
+    large_pv_upper_bound,
+    small_pv_upper_bound,
     verbose
 ):
     """Generate PV deployments for source tree 1."""
@@ -360,14 +374,21 @@ def source_tree_1(
     }
     action_function = ACTION_MAPPING[action]
     args = [input_path, hierarchy, config]
+    kwargs = {}
     if action == "create-configs":
         args.append(control_name)
         args.append(kw_limit)
     if action == "create-pv":
         args.append(hv_min)
         args.append(hv_max)
-        
-    action_function(*args)
+    
+    if large_pv_upper_bound:
+        kwargs['large_pv_upper_bound'] = large_pv_upper_bound
+    
+    if small_pv_upper_bound:
+        kwargs['small_pv_upper_bound'] = small_pv_upper_bound
+    
+    action_function(*args, **kwargs)
 
 
 pv_deployments.add_command(source_tree_1)

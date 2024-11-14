@@ -356,7 +356,7 @@ class PVScenarioGeneratorBase(abc.ABC):
             raise
         return pvdss_instance
 
-    def deploy_all_pv_scenarios(self, hv_min, hv_max) -> dict:
+    def deploy_all_pv_scenarios(self, hv_min, hv_max, **kwargs) -> dict:
         """Given a feeder path, generate all PV scenarios for the feeder"""
         feeder_name = self.get_feeder_name()
         pvdss_instance = self.load_pvdss_instance()
@@ -429,7 +429,7 @@ class PVScenarioGeneratorBase(abc.ABC):
                     penetration=penetration,
                     sample=sample,
                 )
-                existing_pv, pv_records = self.deploy_pv_scenario(data)
+                existing_pv, pv_records = self.deploy_pv_scenario(data, **kwargs)
 
         return feeder_stats.__dict__
 
@@ -463,7 +463,7 @@ class PVScenarioGeneratorBase(abc.ABC):
         pv_systems_file = os.path.join(penetration_path, PV_SYSTEMS_FILENAME)
         return pv_systems_file
 
-    def deploy_pv_scenario(self, data: SimpleNamespace) -> dict:
+    def deploy_pv_scenario(self, data: SimpleNamespace, **kwargs) -> dict:
         """Generate PV deployments dss file in scenario
 
         Parameters
@@ -503,7 +503,7 @@ class PVScenarioGeneratorBase(abc.ABC):
                             if base_min_pv_size > 0:
                                 continue
                             min_pv_size = existing_pv[bus]
-                            max_pv_size = self.get_maximum_pv_size(bus, data)
+                            max_pv_size = self.get_maximum_pv_size(bus, data, **kwargs)
                             random_pv_size = self.generate_pv_size_from_pdf(min_pv_size, max_pv_size)
                             pv_size = min(random_pv_size, min_pv_size + remaining_pv_to_install)
                             pv_added_capacity = pv_size - min_pv_size
@@ -553,7 +553,7 @@ class PVScenarioGeneratorBase(abc.ABC):
                     if (base_min_pv_size > 0 or min_pv_size > 0) and (not self.config.pv_upscale):
                         pass
                     else:
-                        max_pv_size = self.get_maximum_pv_size(picked_candidate, data)
+                        max_pv_size = self.get_maximum_pv_size(picked_candidate, data, **kwargs)
                         random_pv_size = self.generate_pv_size_from_pdf(0, max_pv_size)
                         pv_size = min(random_pv_size, remaining_pv_to_install)
                         pv_string = self.add_pv_string(picked_candidate, pv_type.value, pv_size, pv_string)
@@ -988,7 +988,8 @@ class LargePVScenarioGenerator(PVScenarioGeneratorBase):
 
     @classmethod
     def get_maximum_pv_size(cls, bus: str, data: SimpleNamespace, **kwargs) -> int:
-        max_bus_pv_size = 100 * random.randint(1, 50)
+        upper_bound = kwargs.get('large_pv_upper_bound', 50)
+        max_bus_pv_size = 100 * random.randint(1, upper_bound)
         return max_bus_pv_size
 
 
@@ -1014,6 +1015,8 @@ class SmallPVScenarioGenerator(PVScenarioGeneratorBase):
         annual_sun_hours = kwargs.get("annual_sun_hours", None)
 
         pv_size_array = [max_load_factor * data.bus_totalload[bus]]
+        if 'small_pv_upper_bound' in kwargs:
+            pv_size_array.append(kwargs['small_pv_upper_bound'])
         if roof_area and pv_efficiency:
             value = roof_area[bus] * pv_efficiency
             pv_size_array.append(value)
@@ -1595,7 +1598,7 @@ class PVDeploymentManager(PVDataStorage):
         """
         super().__init__(input_path, hierarchy, config)
 
-    def generate_pv_deployments(self, hv_min: float = 1, hv_max: float = None) -> dict:
+    def generate_pv_deployments(self, hv_min: float = 1, hv_max: float = None, **kwargs) -> dict:
         """Given input path, generate pv deployments"""
         summary = {}
         feeder_paths = self.get_feeder_paths()
@@ -1605,7 +1608,7 @@ class PVDeploymentManager(PVDataStorage):
                 "Set initial integer seed %s for PV deployments on feeder - %s",
                 self.config.random_seed, feeder_path
             )
-            feeder_stats = generator.deploy_all_pv_scenarios(hv_min, hv_max)
+            feeder_stats = generator.deploy_all_pv_scenarios(hv_min, hv_max, **kwargs)
             summary[feeder_path] = feeder_stats
         return summary
 
