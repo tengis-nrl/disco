@@ -237,7 +237,7 @@ class PVDSSInstance:
             flag = dss.Loads.Next()
         return result
 
-    def get_highv_buses(self, kv_min: int = 1) -> SimpleNamespace:
+    def get_highv_buses(self, kv_min: float = 1, kv_max: float = None) -> SimpleNamespace:
         """Return highv buses"""
         result = SimpleNamespace(bus_kv={}, hv_bus_distance={})
         flag = dss.Lines.First()
@@ -246,7 +246,7 @@ class PVDSSInstance:
             for bus in buses:
                 dss.Circuit.SetActiveBus(bus)
                 kvbase = dss.Bus.kVBase()
-                if kvbase >= kv_min:
+                if kvbase >= kv_min and (kv_max is None or kvbase <= kv_max):
                     result.bus_kv[bus] = dss.Bus.kVBase()
                     result.hv_bus_distance[bus] = dss.Bus.Distance()
             flag = dss.Lines.Next()
