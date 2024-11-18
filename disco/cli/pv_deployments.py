@@ -290,26 +290,26 @@ def pv_deployments():
     help="Set an initial integer seed for making PV deployments reproducible"
 )
 @click.option(
-    "-min-hv", "--minimum-high-voltage",
+    "-v", "--min-high-voltage",
     type=click.FLOAT,
     default=1,
     show_default=True,
     help="Minimum voltage level for high voltage buses.",
 )
 @click.option(
-    "-max-hv", "--maximum-high-voltage",
+    "-w", "--max-high-voltage",
     type=click.FLOAT,
     default=None,
     help="Maximum voltage level for high voltage buses.",
 )
 @click.option(
-    "-large-pv-max", "--large-pv-upper-bound",
+    "-L", "--large-pv-upper-bound",
     type=click.FLOAT,
     default=None,
     help="Upper bound for large PV power.",
 )
 @click.option(
-    "-small-pv-max", "--small-pv-upper-bound",
+    "-X", "--small-pv-upper-bound",
     type=click.FLOAT,
     default=None,
     help="Upper bound for small PV power.",
@@ -341,8 +341,8 @@ def source_tree_1(
     pv_upscale,
     pv_deployments_dirname,
     random_seed,
-    hv_min,
-    hv_max,
+    min_high_voltage,
+    max_high_voltage,
     large_pv_upper_bound,
     small_pv_upper_bound,
     verbose
@@ -379,8 +379,8 @@ def source_tree_1(
         args.append(control_name)
         args.append(kw_limit)
     if action == "create-pv":
-        args.append(hv_min)
-        args.append(hv_max)
+        args.append(min_high_voltage)
+        args.append(max_high_voltage)
     
     if large_pv_upper_bound:
         kwargs['large_pv_upper_bound'] = large_pv_upper_bound
