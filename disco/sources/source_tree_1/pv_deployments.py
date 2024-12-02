@@ -346,7 +346,7 @@ class PVScenarioGeneratorBase(abc.ABC):
                 # is incorrect.
                 # unidecode is no longer being installed with disco.
                 # pvdss_instance.convert_to_ascii()
-                pvdss_instance.disable_loadshapes_redirect()
+                # pvdss_instance.disable_loadshapes_redirect()
                 pvdss_instance.load_feeder()
                 flag = pvdss_instance.ensure_energy_meter()
                 if flag:
@@ -375,10 +375,10 @@ class PVScenarioGeneratorBase(abc.ABC):
         highv_buses = pvdss_instance.get_highv_buses(kv_min=hv_min, kv_max=hv_max)
 
         # Filter out overlapping buses from customer_distance
-        customer_distance.bus_distance = {
-            bus: dist for bus, dist in customer_distance.bus_distance.items()
-            if bus not in highv_buses.hv_bus_distance
-        }
+        # customer_distance.bus_distance = {
+        #     bus: dist for bus, dist in customer_distance.bus_distance.items()
+        #     if bus not in highv_buses.hv_bus_distance
+        # }
 
         combined_bus_distance = pvdss_instance.combine_bus_distances(customer_distance, highv_buses)
         if max(combined_bus_distance.values()) == 0:
@@ -1255,9 +1255,6 @@ class PVDataManager(PVDataStorage):
         super().__init__(input_path, hierarchy, config)
 
     def redirect(self, input_path: str) -> bool:
-        """Given a path, update the master file by redirecting PVShapes.dss"""
-        self._copy_pv_shapes_file(input_path)
-        
         master_file = os.path.join(input_path, self.config.master_filename)
         if not os.path.exists(master_file):
             raise FileNotFoundError(f"{self.config.master_filename} not found in {input_path}")
@@ -1281,30 +1278,6 @@ class PVDataManager(PVDataStorage):
         with open(master_file, "w") as fw:
             fw.writelines(data)
         return True
-
-    def _copy_pv_shapes_file(self, input_path: str) -> None:
-        """Copy PVShapes.dss file from source to feeder/substatation directories"""
-        input_path  = Path(input_path)
-        # NOTE: Coordinate different path patterns among different cities
-        if "solar_none_batteries_none_timeseries" in str(input_path):
-            index = 3 if input_path.parent.name == "opendss" else 4
-        else:
-            index = 4 if input_path.parent.name == "opendss" else 5
-        src_file = input_path.parents[index] / "pv-profiles" / PV_SHAPES_FILENAME
-        if not src_file.exists():
-            raise ValueError("PVShapes.dss file does not exist - " + str(src_file))
-        dst_file = input_path / PV_SHAPES_FILENAME
-        
-        with open(src_file, "r") as fr, open(dst_file, "w") as fw:
-            new_lines = []
-            for line in fr.readlines():
-                pv_profile = re.findall(r"file=[a-zA-Z0-9\-\_\/\.]*", line)[0]
-                city_path = Path(os.path.sep.join([".."] * (index + 1)))
-                relative_pv_profile = city_path / "pv-profiles" / os.path.basename(pv_profile)
-                relative_pv_profile = "file=" + str(relative_pv_profile)
-                new_line = line.replace(pv_profile, relative_pv_profile)
-                new_lines.append(new_line)
-            fw.writelines(new_lines)
 
     def redirect_substation_pv_shapes(self) -> None:
         """Run PVShapes redirect in substation directories in parallel"""
@@ -1414,8 +1387,7 @@ class PVDataManager(PVDataStorage):
             load_lines = fr.readlines()
             rekeyed_load_dict = self.build_load_dictionary(load_lines)
             updated_lines = self.update_loads(load_lines, rekeyed_load_dict)
-            new_lines = self.strip_pv_profile(updated_lines)
-            fw.writelines(new_lines)
+            fw.writelines(updated_lines)
         logger.info("Loads transformed - '%s'.", loads_file)
     
     def restore_loads_file(self, original_loads_file: str) -> bool:
@@ -1448,19 +1420,6 @@ class PVDataManager(PVDataStorage):
         except Exception:
             pass
         return True
-    
-    def strip_pv_profile(self, load_lines: list) -> list:
-        """To strip 'yearly=<pv-profile>' from load lines during PV deployments"""
-        regex = re.compile(r"\syearly=\S+", flags=re.IGNORECASE)
-        new_lines = []
-        for line in load_lines:
-            match = regex.search(line.strip())
-            if not match:
-                new_lines.append(line)
-            else:
-                line = "".join(line.split(match.group(0)))
-                new_lines.append(line)
-        return new_lines
     
     def get_attribute(self, line: str, attribute_id: str) -> str:
         """
@@ -1561,7 +1520,8 @@ class PVDataManager(PVDataStorage):
                 kv = v["kv"]
                 phases = v["phases"]
             
-            lowered_line = lines[k].lower()
+            #lowered_line = lines[k].lower()
+            lowered_line = lines[k]
             lowered_line = lowered_line.replace(f"kv={self.get_attribute(lines[k], 'kv=')}", f"kv={kv}")
             lowered_line = lowered_line.replace(f"phases={self.get_attribute(lines[k], 'phases=')}", f"phases={phases}")
             if "kw=" in lowered_line:
