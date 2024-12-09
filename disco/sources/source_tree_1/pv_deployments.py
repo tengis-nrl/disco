@@ -226,18 +226,20 @@ class PVDSSInstance:
             flag = dss.Loads.Next()
         return result
 
-    def get_customer_distance(self) -> SimpleNamespace:
+    def get_customer_distance(self, max_bus_voltage: float) -> SimpleNamespace:
         """Return custmer distance"""
         result = SimpleNamespace(load_distance={}, bus_distance={})
         flag = dss.Loads.First()
         while flag > 0:
             dss.Circuit.SetActiveBus(dss.Properties.Value("bus1"))
-            result.load_distance[dss.Loads.Name()] = dss.Bus.Distance()
-            result.bus_distance[dss.Properties.Value("bus1")] = dss.Bus.Distance()
+            kvbase = dss.Bus.kVBase()
+            if kvbase <= max_bus_voltage:
+                result.load_distance[dss.Loads.Name()] = dss.Bus.Distance()
+                result.bus_distance[dss.Properties.Value("bus1")] = dss.Bus.Distance()
             flag = dss.Loads.Next()
         return result
 
-    def get_highv_buses(self, kv_min: float = 1, kv_max: float = None) -> SimpleNamespace:
+    def get_highv_buses(self, kv_min: int = 1) -> SimpleNamespace:
         """Return highv buses"""
         result = SimpleNamespace(bus_kv={}, hv_bus_distance={})
         flag = dss.Lines.First()
@@ -246,7 +248,7 @@ class PVDSSInstance:
             for bus in buses:
                 dss.Circuit.SetActiveBus(bus)
                 kvbase = dss.Bus.kVBase()
-                if kvbase >= kv_min and (kv_max is None or kvbase <= kv_max):
+                if kvbase >= kv_min:
                     result.bus_kv[bus] = dss.Bus.kVBase()
                     result.hv_bus_distance[bus] = dss.Bus.Distance()
             flag = dss.Lines.Next()
@@ -356,7 +358,7 @@ class PVScenarioGeneratorBase(abc.ABC):
             raise
         return pvdss_instance
 
-    def deploy_all_pv_scenarios(self, hv_min, hv_max, **kwargs) -> dict:
+    def deploy_all_pv_scenarios(self, max_bus_voltage, **kwargs) -> dict:
         """Given a feeder path, generate all PV scenarios for the feeder"""
         feeder_name = self.get_feeder_name()
         pvdss_instance = self.load_pvdss_instance()
@@ -371,14 +373,19 @@ class PVScenarioGeneratorBase(abc.ABC):
             )
 
         # combined bus distance
-        customer_distance = pvdss_instance.get_customer_distance()
-        highv_buses = pvdss_instance.get_highv_buses(kv_min=hv_min, kv_max=hv_max)
+        customer_distance = pvdss_instance.get_customer_distance(max_bus_voltage)
+        highv_buses = pvdss_instance.get_highv_buses()
 
         # Filter out overlapping buses from customer_distance
         # customer_distance.bus_distance = {
         #     bus: dist for bus, dist in customer_distance.bus_distance.items()
         #     if bus not in highv_buses.hv_bus_distance
         # }
+        # Remove redundant buses from highv_buses
+        highv_buses.hv_bus_distance = {
+            bus: dist for bus, dist in highv_buses.hv_bus_distance.items()
+            if bus not in customer_distance.bus_distance
+        }
 
         combined_bus_distance = pvdss_instance.combine_bus_distances(customer_distance, highv_buses)
         if max(combined_bus_distance.values()) == 0:
@@ -1559,7 +1566,7 @@ class PVDeploymentManager(PVDataStorage):
         """
         super().__init__(input_path, hierarchy, config)
 
-    def generate_pv_deployments(self, hv_min: float = 1, hv_max: float = None, **kwargs) -> dict:
+    def generate_pv_deployments(self, max_bus_voltage: float = 1, **kwargs) -> dict:
         """Given input path, generate pv deployments"""
         summary = {}
         feeder_paths = self.get_feeder_paths()
@@ -1569,7 +1576,7 @@ class PVDeploymentManager(PVDataStorage):
                 "Set initial integer seed %s for PV deployments on feeder - %s",
                 self.config.random_seed, feeder_path
             )
-            feeder_stats = generator.deploy_all_pv_scenarios(hv_min, hv_max, **kwargs)
+            feeder_stats = generator.deploy_all_pv_scenarios(max_bus_voltage, **kwargs)
             summary[feeder_path] = feeder_stats
         return summary
 

@@ -25,7 +25,7 @@ PLACEMENT_CHOICE = [item.value for item in Placement]
 logger = logging.getLogger(__name__)
 
 
-def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min: float, hv_max: float, **kwargs):
+def create_pv_deployments(input_path: str, hierarchy: str, config: dict, max_bus_voltage: float, **kwargs):
     """A method for generating pv deployments"""
     hierarchy = DeploymentHierarchy(hierarchy)
     config = SimpleNamespace(**config)
@@ -33,7 +33,7 @@ def create_pv_deployments(input_path: str, hierarchy: str, config: dict, hv_min:
         print(f"'-p' or '--placement' should not be None for this action, choose from {PLACEMENT_CHOICE}")
         sys.exit()
     manager = PVDeploymentManager(input_path, hierarchy, config)
-    summary = manager.generate_pv_deployments(hv_min=hv_min, hv_max=hv_max, **kwargs)
+    summary = manager.generate_pv_deployments(max_bus_voltage=max_bus_voltage, **kwargs)
     print(json.dumps(summary, indent=2))
 
 
@@ -290,23 +290,10 @@ def pv_deployments():
     help="Set an initial integer seed for making PV deployments reproducible"
 )
 @click.option(
-    "-v", "--min-high-voltage",
-    type=click.FLOAT,
-    default=1,
-    show_default=True,
-    help="Minimum voltage level for high voltage buses.",
-)
-@click.option(
-    "-w", "--max-high-voltage",
+    "-w", "--max-bus-voltage",
     type=click.FLOAT,
     default=None,
-    help="Maximum voltage level for high voltage buses.",
-)
-@click.option(
-    "-L", "--large-pv-upper-bound",
-    type=click.FLOAT,
-    default=None,
-    help="Upper bound for large PV power.",
+    help="Maximum voltage level for customer buses in kV.",
 )
 @click.option(
     "-X", "--small-pv-upper-bound",
@@ -341,9 +328,7 @@ def source_tree_1(
     pv_upscale,
     pv_deployments_dirname,
     random_seed,
-    min_high_voltage,
-    max_high_voltage,
-    large_pv_upper_bound,
+    max_bus_voltage,
     small_pv_upper_bound,
     verbose
 ):
@@ -379,11 +364,7 @@ def source_tree_1(
         args.append(control_name)
         args.append(kw_limit)
     if action == "create-pv":
-        args.append(min_high_voltage)
-        args.append(max_high_voltage)
-    
-    if large_pv_upper_bound:
-        kwargs['large_pv_upper_bound'] = large_pv_upper_bound
+        args.append(max_bus_voltage)
     
     if small_pv_upper_bound:
         kwargs['small_pv_upper_bound'] = small_pv_upper_bound
