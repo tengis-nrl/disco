@@ -299,7 +299,7 @@ def pv_deployments():
     "-X", "--small-pv-upper-bound",
     type=click.FLOAT,
     default=None,
-    help="Upper bound for small PV power.",
+    help="Upper bound for small PV power in kVA.",
 )
 @click.option(
     "--verbose",

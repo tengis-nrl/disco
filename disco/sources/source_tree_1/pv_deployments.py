@@ -643,8 +643,11 @@ class PVScenarioGeneratorBase(abc.ABC):
 
     @staticmethod
     def generate_pv_size_from_pdf(min_size: float, max_size: float, pdf: Sequence = None) -> float:
-        # TODO: A placeholder function for later update
-        pv_size = max_size
+        if pdf is None:
+            pv_size = random.uniform(min_size, max_size)
+        else:
+            # TODO: A placeholder function for later update
+            pv_size = max_size
         return pv_size
 
     def add_pv_string(self, bus: str, pv_type: str, pv_size: float, pv_string: str) -> str:
@@ -1017,7 +1020,7 @@ class SmallPVScenarioGenerator(PVScenarioGeneratorBase):
         annual_sun_hours = kwargs.get("annual_sun_hours", None)
 
         if 'small_pv_upper_bound' in kwargs:
-            max_bus_pv_size = [kwargs['small_pv_upper_bound']]
+            max_bus_pv_size = kwargs['small_pv_upper_bound']
         else:
             pv_size_array = [max_load_factor * data.bus_totalload[bus]]
             if roof_area and pv_efficiency:
